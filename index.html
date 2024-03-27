@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="expenseTrackerApp">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  </head>
+  <body ng-controller="ExpenseController">
+    <h1>Expense Tracker</h1>
+
+    <main>
+      <header>
+        <div>
+          <h5>Total Balance</h5>
+          <span id="balance">Rs. {{ balance }}</span>
+        </div>
+        <div>
+          <h5>Income</h5>
+          <span id="income">Rs. {{ income }}</span>
+        </div>
+        <div>
+          <h5>Expense</h5>
+          <span id="expense">Rs. {{ expense}}</span>
+        </div>
+      </header>
+
+      <section>
+        <h3>Transactions</h3>
+        <ul id="transactionList">
+          <li ng-repeat="transaction in transactions">
+            <div class="name">
+              <h4>{{ transaction.name }}</h4>
+              <p>{{ transaction.date | date: 'MM/dd/yyyy' }}</p>
+            </div>
+            <div
+              class="amount"
+              ng-class="{ 'income': transaction.type === 'income', 'expense': transaction.type === 'expense' }"
+            >
+              <span>Rs. {{ transaction.amount }}</span>
+            </div>
+            <div class="action">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                ng-click="deleteTransaction(transaction._id)"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+          </li>
+        </ul>
+        <div id="status"></div>
+      </section>
+
+      <section>
+        <h3>Add Transaction</h3>
+
+        <form id="transactionForm" ng-submit="addTransaction()">
+          <div>
+            <label for="type">
+              <input
+                type="checkbox"
+                name="type"
+                id="type"
+                ng-model="transactionType"
+              />
+              <div class="option">
+                <span>Expense</span>
+                <span>Income</span>
+              </div>
+            </label>
+          </div>
+          <div>
+            <label for="name">Name</label>
+            <input
+              type="text"
+              name="name"
+              ng-model="transactionName"
+              required
+            />
+          </div>
+          <div>
+            <label for="amount">Amount</label>
+            <input
+              type="number"
+              name="amount"
+              ng-model="transactionAmount"
+              min="0.01"
+              step="0.01"
+              required
+            />
+          </div>
+          <div>
+            <label for="date">Date</label>
+            <input
+              type="date"
+              name="date"
+              ng-model="transactionDate"
+              required
+            />
+          </div>
+          <button type="submit">Submit</button>
+        </form>
+      </section>
+    </main>
+
+    <!-- <script>
+      angular
+        .module("expenseTrackerApp", [])
+        .controller("ExpenseController", function ($scope) {
+          $scope.transactions = [];
+          $scope.balance = 0;
+          $scope.income = 0;
+          $scope.expense = 0;
+          $scope.transactionType = false;
+          $scope.transactionName = "";
+          $scope.transactionAmount = 0;
+          $scope.transactionDate = "";
+
+          $scope.addTransaction = function () {
+            var type = $scope.transactionType ? "income" : "expense";
+            $scope.transactions.push({
+              id: $scope.transactions.length + 1,
+              name: $scope.transactionName,
+              amount: parseFloat($scope.transactionAmount),
+              date: $scope.transactionDate,
+              type: type,
+            });
+
+            $scope.transactionName = "";
+            $scope.transactionAmount = 0;
+            $scope.transactionDate = "";
+            $scope.updateTotal();
+          };
+
+          $scope.deleteTransaction = function (id) {
+            var index = $scope.transactions.findIndex(function (trx) {
+              return trx.id === id;
+            });
+            $scope.transactions.splice(index, 1);
+            $scope.updateTotal();
+          };
+
+          $scope.updateTotal = function () {
+            $scope.income = $scope.transactions
+              .filter(function (trx) {
+                return trx.type === "income";
+              })
+              .reduce(function (total, trx) {
+                return total + trx.amount;
+              }, 0);
+
+            $scope.expense = $scope.transactions
+              .filter(function (trx) {
+                return trx.type === "expense";
+              })
+              .reduce(function (total, trx) {
+                return total + trx.amount;
+              }, 0);
+
+            $scope.balance = $scope.income - $scope.expense;
+          };
+        });
+    </script> -->
+
+    <script>
+      // fetchExpense();
+
+      angular
+        .module("expenseTrackerApp", [])
+        .controller("ExpenseController", function ($scope) {
+          $scope.transactions = [];
+          $scope.balance = 0;
+          $scope.income = 0;
+          $scope.expense = 0;
+          $scope.transactionType = false;
+          $scope.transactionName = "";
+          $scope.transactionAmount = 0;
+          $scope.transactionDate = "";
+
+          window.onload = function () {
+            fetchExpense();
+          };
+
+          //function to fetch total expenses - get
+          async function fetchExpense() {
+            await axios
+              .get("http://localhost:3000/api/expenses")
+              .then((response) => {
+                $scope.transactions = response.data; // Assign response data to transactions array
+                console.log($scope.transactions);
+                $scope.updateTotal();
+                console.log(response.data[0]);
+              })
+              .catch((error) => {
+                console.error("Error fetching expenses", error);
+              });
+          }
+
+          // function to add a new expense - post
+          $scope.addTransaction = function () {
+            let type = $scope.transactionType ? "income" : "expense";
+            let newTransaction = {
+              // id: Date.now() + Math.random().toString(36).substr(2, 9),
+
+              id: generateObjectId(),
+              name: $scope.transactionName,
+              amount: parseFloat($scope.transactionAmount),
+              date: $scope.transactionDate,
+              type: type,
+            };
+
+            axios
+              .post("/api/createExpense", newTransaction)
+              .then((response) => {
+                $scope.transactions.push(response.data);
+                $scope.updateTotal();
+                $scope.$apply(function () {
+                  // Resetting the values after successful creation
+                  $scope.transactionName = "";
+                  $scope.transactionAmount = 0;
+                  $scope.transactionDate = "";
+                });
+              })
+              .catch((error) => {
+                console.error("error adding transaction:", error);
+              });
+          };
+
+          function generateObjectId() {
+            let timestamp = ((new Date().getTime() / 1000) | 0).toString(16);
+            return (
+              timestamp +
+              "xxxxxxxxxxxxxxxx"
+                .replace(/[x]/g, function () {
+                  return ((Math.random() * 16) | 0).toString(16);
+                })
+                .toLowerCase()
+            );
+          }
+
+          // function to delete a transaction - delete
+          $scope.deleteTransaction = function (id) {
+            console.log(`this is the id : ${id}`);
+            axios
+              .delete(`/api/deleteExpense/${id}`)
+              .then(() => {
+                $scope.transactions = $scope.transactions.filter(
+                  (trx) => trx.id !== id
+                );
+                $scope.updateTotal();
+              })
+              .catch((error) => {
+                console.error("Error deleting transaction:", error);
+              });
+          };
+
+          //function to update total balance - this is not put request
+          $scope.updateTotal = function () {
+            $scope.income = $scope.transactions
+              .filter((trx) => trx.type === "income")
+              .reduce((total, trx) => total + trx.amount, 0);
+
+            $scope.expense = $scope.transactions
+              .filter((trx) => trx.type === "expense")
+              .reduce((total, trx) => total + trx.amount, 0);
+
+            $scope.balance = $scope.income - $scope.expense;
+          };
+        });
+    </script>
+  </body>
+</html>
